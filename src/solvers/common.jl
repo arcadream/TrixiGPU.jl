@@ -1,20 +1,11 @@
 # Some common functions that are shared between the solvers.
 
 # Copy data from CPU to GPU
-function copy_to_gpu!(du::PtrArray, u::PtrArray)
-    du = CUDA.zeros(Float64, size(du)...)
-    u = CuArray{Float64}(u)
+function reset_du!(du::CuArray)
+    du_zero = zero(du)
+    du .= du_zero # no scalar indexing
 
-    return (du, u)
-end
-
-# Copy data from GPU to CPU 
-function copy_to_cpu!(du::CuArray, u::CuArray)
-    # TODO: Direct CuArray to PtrArray
-    du = PtrArray(Array{Float64}(du))
-    u = PtrArray(Array{Float64}(u))
-
-    return (du, u)
+    return nothing
 end
 
 # Set diagonal entries of a matrix to zeros

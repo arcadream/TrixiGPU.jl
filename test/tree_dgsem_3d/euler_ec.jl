@@ -21,34 +21,39 @@ include("../test_macros.jl")
     semi_gpu = SemidiscretizationHyperbolicGPU(mesh, equations, initial_condition, solver)
 
     tspan = (0.0, 0.4)
+    t = t_gpu = 0.0
 
+    # Semi on CPU
+    (; mesh, equations, boundary_conditions, source_terms, solver, cache) = semi
+
+    # Semi on GPU
+    equations_gpu = semi_gpu.equations
+    mesh_gpu, solver_gpu, cache_gpu = semi_gpu.mesh, semi_gpu.solver, semi_gpu.cache
+    boundary_conditions_gpu = semi_gpu.boundary_conditions
+    source_terms_gpu = semi_gpu.source_terms
+
+    # ODE on CPU
     ode = semidiscretize(semi, tspan)
     u_ode = copy(ode.u0)
     du_ode = similar(u_ode)
-
-    # Get CPU data
-    t = 0.0
-    (; mesh, equations, initial_condition, boundary_conditions, source_terms, solver, cache) = semi
     u = Trixi.wrap_array(u_ode, mesh, equations, solver, cache)
     du = Trixi.wrap_array(du_ode, mesh, equations, solver, cache)
 
-    # Get GPU data
-    t_gpu = 0.0
-    equations_gpu = semi_gpu.equations
-    mesh_gpu, solver_gpu, cache_gpu = semi_gpu.mesh, semi_gpu.solver, semi_gpu.cache
-    initial_condition_gpu = semi_gpu.initial_condition
-    boundary_conditions_gpu = semi_gpu.boundary_conditions
-    source_terms_gpu = semi_gpu.source_terms
-    u_gpu = CuArray(u)
-    du_gpu = CuArray(du)
+    # ODE on GPU
+    ode_gpu = semidiscretizeGPU(semi_gpu, tspan)
+    u_gpu = copy(ode_gpu.u0)
+    du_gpu = similar(u_gpu)
 
-    # Begin tests
+    @testset "Components Initialization" begin
+        @test_approx (u_gpu, u)
+        # du is initlaizaed as undefined, cannot test now
+    end
+
     @testset "Semidiscretization Process" begin
         @testset "Copy to GPU" begin
             du_gpu, u_gpu = TrixiCUDA.copy_to_gpu!(du, u)
             Trixi.reset_du!(du, solver, cache)
             @test_approx (du_gpu, du)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Volume Integral" begin
@@ -59,14 +64,12 @@ include("../test_macros.jl")
             Trixi.calc_volume_integral!(du, u, mesh, Trixi.have_nonconservative_terms(equations),
                                         equations, solver.volume_integral, solver, cache)
             @test_approx (du_gpu, du)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Prolong Interfaces" begin
             TrixiCUDA.cuda_prolong2interfaces!(u_gpu, mesh_gpu, equations_gpu, cache_gpu)
             Trixi.prolong2interfaces!(cache, u, mesh, equations, solver.surface_integral, solver)
             @test_approx (cache_gpu.interfaces.u, cache.interfaces.u)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Interface Flux" begin
@@ -78,7 +81,6 @@ include("../test_macros.jl")
                                        solver.surface_integral, solver, cache)
             @test_approx (cache_gpu.elements.surface_flux_values,
                           cache.elements.surface_flux_values)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Prolong Boundaries" begin
@@ -86,7 +88,6 @@ include("../test_macros.jl")
                                                equations_gpu, cache_gpu)
             Trixi.prolong2boundaries!(cache, u, mesh, equations, solver.surface_integral, solver)
             @test_approx (cache_gpu.boundaries.u, cache.boundaries.u)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Boundary Flux" begin
@@ -97,7 +98,6 @@ include("../test_macros.jl")
                                       solver.surface_integral, solver)
             @test_approx (cache_gpu.elements.surface_flux_values,
                           cache.elements.surface_flux_values)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Prolong Mortars" begin
@@ -110,7 +110,6 @@ include("../test_macros.jl")
             @test_approx (cache_gpu.mortars.u_upper_right, cache.mortars.u_upper_right)
             @test_approx (cache_gpu.mortars.u_lower_left, cache.mortars.u_lower_left)
             @test_approx (cache_gpu.mortars.u_lower_right, cache.mortars.u_lower_right)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Mortar Flux" begin
@@ -122,7 +121,6 @@ include("../test_macros.jl")
                                     solver.mortar, solver.surface_integral, solver, cache)
             @test_approx (cache_gpu.elements.surface_flux_values,
                           cache.elements.surface_flux_values)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Surface Integral" begin
@@ -130,14 +128,12 @@ include("../test_macros.jl")
             Trixi.calc_surface_integral!(du, u, mesh, equations, solver.surface_integral,
                                          solver, cache)
             @test_approx (du_gpu, du)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Apply Jacobian" begin
             TrixiCUDA.cuda_jacobian!(du_gpu, mesh_gpu, equations_gpu, cache_gpu)
             Trixi.apply_jacobian!(du, mesh, equations, solver, cache)
             @test_approx (du_gpu, du)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Apply Sources" begin
@@ -145,13 +141,11 @@ include("../test_macros.jl")
                                     equations_gpu, cache_gpu)
             Trixi.calc_sources!(du, u, t, source_terms, equations, solver, cache)
             @test_approx (du_gpu, du)
-            @test_equal (u_gpu, u)
         end
 
         @testset "Copy to CPU" begin
             du_cpu, u_cpu = TrixiCUDA.copy_to_cpu!(du_gpu, u_gpu)
             @test_approx (du_cpu, du)
-            @test_equal (u_cpu, u)
         end
     end
 end

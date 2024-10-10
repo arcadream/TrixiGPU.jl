@@ -1,5 +1,6 @@
-# This file is part of the package `Semidiscretizations.jl`.
+# Everything specific about semidiscretization hyperbolic for PDE solvers.
 
+# Similar to `SemidiscretizationHyperbolic` in Trixi.jl but for GPU cache 
 function SemidiscretizationHyperbolicGPU(mesh, equations, initial_condition, solver;
                                          source_terms = nothing,
                                          boundary_conditions = boundary_condition_periodic,
@@ -16,6 +17,7 @@ function SemidiscretizationHyperbolicGPU(mesh, equations, initial_condition, sol
 
     check_periodicity_mesh_boundary_conditions(mesh, _boundary_conditions)
 
+    # Return the CPU type
     SemidiscretizationHyperbolic{typeof(mesh), typeof(equations),
                                  typeof(initial_condition),
                                  typeof(_boundary_conditions), typeof(source_terms),
@@ -24,4 +26,11 @@ function SemidiscretizationHyperbolicGPU(mesh, equations, initial_condition, sol
                                                                 _boundary_conditions,
                                                                 source_terms, solver,
                                                                 cache)
+end
+
+# Similar to `compute_coefficients` in Trixi.jl but calls GPU kernel
+function compute_coefficients_gpu(t, semi::SemidiscretizationHyperbolic)
+
+    # Call `compute_coefficients_gpu` in `src/semidiscretization/semidiscretization.jl`
+    compute_coefficients_gpu(semi.initial_condition, t, semi)
 end

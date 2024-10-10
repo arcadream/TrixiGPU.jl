@@ -7,7 +7,7 @@ using CUDA
 using CUDA: @cuda, CuArray, HostKernel,
             threadIdx, blockIdx, blockDim, similar, launch_configuration
 
-using Trixi: AbstractEquations, AbstractContainer,
+using Trixi: AbstractEquations, AbstractContainer, AbstractSemidiscretization, AbstractMesh,
              ElementContainer1D, ElementContainer2D, ElementContainer3D,
              InterfaceContainer1D, InterfaceContainer2D, InterfaceContainer3D,
              BoundaryContainer1D, BoundaryContainer2D, BoundaryContainer3D,
@@ -18,6 +18,7 @@ using Trixi: AbstractEquations, AbstractContainer,
              BoundaryConditionPeriodic, BoundaryConditionDirichlet,
              VolumeIntegralWeakForm, VolumeIntegralFluxDifferencing, VolumeIntegralShockCapturingHG,
              LobattoLegendreMortarL2,
+             allocate_coefficients, mesh_equations_solver_cache,
              flux, ntuple, nvariables, nnodes, nelements, nmortars,
              local_leaf_cells, init_elements, init_interfaces, init_boundaries, init_mortars,
              wrap_array, compute_coefficients, have_nonconservative_terms,

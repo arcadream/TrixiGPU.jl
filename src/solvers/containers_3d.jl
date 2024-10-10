@@ -27,6 +27,7 @@ mutable struct ElementContainerGPU3D{RealT <: Real, uEltype <: Real} <: Abstract
     end
 end
 
+Base.eltype(elements::ElementContainerGPU3D) = eltype(elements.surface_flux_values)
 @inline nelements(elements::ElementContainerGPU3D) = length(elements.cell_ids)
 
 # Copy arrays from DG elements to GPU

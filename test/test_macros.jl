@@ -1,31 +1,4 @@
-# Create some macros to simplify the testing process.
-using Trixi, TrixiCUDA
-using CUDA
-using Test: @test, @testset
-
-# Macro to test the type Float64 or Float32 ?
-
-# Macro to test the exact equality of two arrays, which can be from the CPU, GPU, 
-# or a combination of both
-macro test_equal(expr)
-    # Parse the expression and check that it is of the form 
-    # @test_equal (array1, array2)
-    if expr.head != :tuple || length(expr.args) != 2
-        error("Incorrect usage. Expected syntax: @test_approx(array1, array2)")
-    end
-
-    local array1 = esc(expr.args[1])
-    local array2 = esc(expr.args[2])
-
-    quote
-        # Convert to arrays to avoid using CUDA.@allowscalar 
-        # to access the elements of some arrays
-        local _array1 = Array($array1)
-        local _array2 = Array($array2)
-
-        @test _array1 == _array2
-    end
-end
+# Create some macros to assist the testing process
 
 # Macro to test the approximate equality of arrays from GPU and CPU with NaNs
 macro test_approx(expr)
@@ -100,12 +73,24 @@ macro test_approx(expr)
     end
 end
 
-# Truth table 
-# -------------------------------
-#   Entry   |   Entry   | Result
-# -------------------------------
-#    NaN    |   zero    |   1
-#    NaN    |  non-zero |   0
-#  non-NaN  |   zero    |   1
-#  non-NaN  |  non-zero |   1
-# -------------------------------
+# Macro to test the exact equality of two arrays, which can be from the CPU, GPU, 
+# or a combination of both
+macro test_equal(expr)
+    # Parse the expression and check that it is of the form 
+    # @test_equal (array1, array2)
+    if expr.head != :tuple || length(expr.args) != 2
+        error("Incorrect usage. Expected syntax: @test_approx(array1, array2)")
+    end
+
+    local array1 = esc(expr.args[1])
+    local array2 = esc(expr.args[2])
+
+    quote
+        # Convert to arrays to avoid using CUDA.@allowscalar 
+        # to access the elements of some arrays
+        local _array1 = Array($array1)
+        local _array2 = Array($array2)
+
+        @test _array1 == _array2
+    end
+end
